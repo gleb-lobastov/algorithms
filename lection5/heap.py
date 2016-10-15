@@ -82,7 +82,7 @@ class Heap(object):
                 index_down, _ = self._balance_edge(self._get_appropriate_child(index_down), index_down)
 
     def insert(self, precedence, payload=None):
-        self._data.append((precedence, payload))
+        self._data.append((precedence, payload if payload is not None else precedence))
         self._balance_item(len(self) - 1, self.UP)
 
     def insert_items(self, items):
