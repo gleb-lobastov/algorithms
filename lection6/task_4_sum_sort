@@ -1,0 +1,71 @@
+"""
+Given arrays a[1...n] and B[1...n]. We want to bring all the n^2 sums of the form A[i]+B[j] in
+ascending order. The naive way is to create an array containing all such amounts, and sort it.
+Appropriate the algorithm has the operation time is O(n^2 * log(n)) and uses O(n^2) memory.
+Provide an algorithm with the same the work, which uses linear memory.
+
+Даны массивы A[1…n] и B[1…n]. Мы хотим вывести все n^2 сумм вида A[i]+B[j] в возрастающем порядке.
+Наивный способ — создать массив, содержащий все такие суммы, и отсортировать его. Соответствующий
+алгоритм имеет время работы O(n^2 * log(n)) и использует O(n^2) памяти. Приведите алгоритм с таким же
+временем работы, который использует линейную память.
+"""
+import collections
+
+Row = collections.namedtuple('Row', ['sum', 'index'])
+
+
+def sum_sort_naive(a: list, b: list):
+    return list(sorted(ai + bi for ai in a for bi in b))
+
+
+def sum_sort(list1: list, list2: list):
+    list1 = list(sorted(list1))
+    list2 = list(sorted(list2))
+    size = len(list1)
+    assert size == len(list2)
+
+    # Each index is list1 index and value is index of minimal list2 item,
+    # which not yet paired with the appropriate a item.
+    min_unpaired = [0] * len(list1)
+    result = []
+    while True:
+        # list2 indices, witch compete to make a minimum pair at current iteration.
+        unique_list2_indices = set(min_unpaired) - {size}
+
+        # If true it means that all min_unpaired links went through
+        # all b indices, so all possible sums is covered.
+        if not unique_list2_indices:
+            break
+
+        # Calculate and compare all possible minimums at current iteration, then get real minimum and it
+        # index. Count of possible minimums is equal to len(unique_list2_indices), and could not exceed
+        # "size" of elements. Thus, considering all around stuff, required memory is estimated as O(n)
+        found = min(
+            Row(
+                sum=list1[min_unpaired.index(list2_idx)] + list2[list2_idx],
+                index=min_unpaired.index(list2_idx)
+            )
+            for list2_idx in unique_list2_indices
+        )
+
+        min_unpaired[found.index] += 1
+        result.append(found.sum)
+
+    return result
+
+
+def test():
+    def is_correct(a, b):
+        return sum_sort(a, b) == sum_sort_naive(a, b)
+
+    assert is_correct([1, 2, 3], [1, 2, 3])
+    assert is_correct([1, 3, 5], [3, 5, 7])
+    assert is_correct([1, 2, 1000], [998, 999, 1000])
+    assert is_correct([1, 1, 1], [1, 1, 1])
+    assert is_correct(list(range(10)), list(range(20, 30)))
+
+    print('tests passed')
+
+
+if __name__ == "__main__":
+    test()
