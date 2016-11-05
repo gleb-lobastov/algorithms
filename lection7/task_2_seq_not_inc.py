@@ -7,37 +7,82 @@ Given an integer 1≤n≤10^5 and array a[1...n] contains the non-negative integ
 10^9. Find greatest non-increasing subsequence in A. In the first line print it
 the length of k, the second, the indexes 1≤i1<i2<...<ik≤n (thus, A[i1]≥A[i2]≥...≥A[in]).
 """
-TESTING = True
+
+TESTING = False
 
 
-def non_inc_subsequence(sequence):
-    length = len(sequence)
-    subseq_lengths = [1] * length
-    for i in range(length):
-        for j in range(i):
-            if sequence[i] <= sequence[j] and subseq_lengths[j] + 1 > subseq_lengths[i]:
-                subseq_lengths[i] = subseq_lengths[j] + 1
+def bisect_right_desc(desc_list, value):
+    """ bisect.bisect equivalent for descending sequences """
+    lo = 0
+    hi = len(desc_list)
 
-    longest_subseq_length = max(subseq_lengths)
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if value > desc_list[mid]:
+            hi = mid
+        else:
+            lo = mid + 1
+
+    return lo
+
+
+def longest_non_inc_subseq(sequence):
+    """ Lookup for longest non-increasing subsequence in given sequence """
+
+    # Values to calculate
+    longest_subseq_length = 0
     longest_subseq_indices = []
 
-    last_index = length
-    for seq_len in range(longest_subseq_length, 0, -1):
-        _, last_index = max(
-            (sequence[subseq_index], subseq_index)
-            for subseq_index, subseq_length in enumerate(subseq_lengths[:last_index])
-            if subseq_length == seq_len
-        )
-        longest_subseq_indices.append(last_index)
+    # Longest subseq lengths. Share index with sequence
+    longest_subseq_lengths = []
 
+    # List of sequence greatest values for each possible length of subseq.
+    # The joke is that values will also be sorted in descending order.
+    highs = []
+
+    for value in sequence:
+
+        # Lookup for subseq length of value
+        subseq_length = bisect_right_desc(highs, value)
+
+        if subseq_length >= longest_subseq_length:
+
+            # If we found new subseq maximum, then just append it to highs
+            highs.append(value)
+            longest_subseq_length += 1
+        else:
+
+            # If value already present in highs, then lookup returns subseq length
+            # that correspond for previous item of sequence with same value.
+            # Thus we should increase it.
+            if highs[subseq_length] == value:
+                subseq_length += 1
+
+            # Otherwise, if value is not present, lookup will return appropriate subseq length
+            highs[subseq_length] = value
+        longest_subseq_lengths.append(subseq_length)
+
+    # Counter for restoring. It starting from discovered subseq length, given the fact that
+    # resulting subsequence is by one greater than greatest subsequence found for item,
+    # because it contains that item.
+    current_high = longest_subseq_length - 1
+
+    # Restore subsequence indices
+    for index, subseq_length in reversed(list(enumerate(longest_subseq_lengths))):
+        if subseq_length == current_high:
+            longest_subseq_indices.append(index)
+            current_high -= 1
+
+    # Arrange output in order of appearance in the sequence
     longest_subseq_indices.reverse()
+
     return longest_subseq_length, longest_subseq_indices
 
 
 def main():
     _ = input()
     sequence = list(map(int, input().split()))
-    longest_subseq_length, longest_subseq_indices = non_inc_subsequence(sequence)
+    longest_subseq_length, longest_subseq_indices = longest_non_inc_subseq(sequence)
     print(longest_subseq_length)
     print(' '.join(str(index + 1) for index in longest_subseq_indices))
 
@@ -46,33 +91,30 @@ def test():
     import timeit
     import random
 
-    fail = False
-
     def test_sequence(sequence, expected_length):
-        nonlocal fail
-        length, subsequence_indices = non_inc_subsequence(sequence)
-        try:
-            if expected_length >= 0:
-                assert len(subsequence_indices) == expected_length == length
-            for index in range(1, len(subsequence_indices)):
-                assert subsequence_indices[index] > subsequence_indices[index - 1]
-                assert sequence[subsequence_indices[index]] <= sequence[subsequence_indices[index - 1]]
-        except AssertionError:
-            fail = True
+        length, subsequence_indices = longest_non_inc_subseq(sequence)
+        assert len(subsequence_indices) == length
+        if expected_length != -1:
+            assert length == expected_length
+        for index in range(1, len(subsequence_indices)):
+            assert subsequence_indices[index] > subsequence_indices[index - 1]
+            assert sequence[subsequence_indices[index]] <= sequence[subsequence_indices[index - 1]]
 
+    test_sequence([], 0)
+    test_sequence([1], 1)
     test_sequence([3, 2, 1], 3)
     test_sequence([2, 2, 2], 3)
     test_sequence([1, 2, 1], 2)
     test_sequence([1, 2, 2], 2)
     test_sequence([1, 2, 3], 1)
     test_sequence([2, 10, 2, 11, 2, 12, 2], 4)
+    test_sequence([7, 6, 5, 6, 8, 4, 5, 5, 6, 7, 3, 4], 6)
     test_sequence([5, 3, 4, 4, 2], 4)
 
     long_sequence = list(random.randint(1, 1000000000) for _ in range(10000))
     test_sequence(long_sequence, -1)
-    assert not fail
 
-    timing = timeit.timeit(lambda: non_inc_subsequence(long_sequence), number=1)
+    timing = timeit.timeit(lambda: longest_non_inc_subseq(long_sequence), number=1)
     print(timing)
     assert timing < 5
 
